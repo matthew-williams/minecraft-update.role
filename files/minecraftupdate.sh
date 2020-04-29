@@ -71,7 +71,72 @@ usage()
 	echo "----------------------------------------"
 	echo
 }
+#
+# FUNCTIONS
+#
+backupmc()
+{
+    echo "Removing old backups in $TEMP_DIR" > $NORMAL_OUT
+    find "${TEMP_DIR}"/ -type f -mtime +7 -delete
+    echo "----Done----" > $NORMAL_OUT
+    echo "Backing up $PACK_PATH" > $NORMAL_OUT
+    rsync -vph "${PACK_PATH}"server.properties "${TEMP_DIR}"
+    if [ -e "${PACK_PATH}"ops.json ]
+    then
+    	rsync -vph "${PACK_PATH}"ops.json "${TEMP_DIR}"
+    else
+        echo "----No ops.json found----" > $NORMAL_OUT
+    fi
+    if [ -e "${PACK_PATH}"whitelist.json ]
+    then
+    	rsync -vph "${PACK_PATH}"whitelist.json "${TEMP_DIR}"
+    else
+        echo "----No whitelist.json found----" > $NORMAL_OUT
+    fi
+    if [ -e "${PACK_PATH}"backups ]
+    then
+    	rsync -rvph "${PACK_PATH}"backups "${TEMP_DIR}"
+    else
+        echo "----No backups folder found----" > $NORMAL_OUT
+    fi
+    if [ -e "${PACK_PATH}"world ]
+    then
+    	rsync -rvph "${PACK_PATH}"world "${TEMP_DIR}"
+    else
+        echo "----No world folder found----" > $ERROR_OUT
+        echo "----Something when wrong----" > $ERROR_OUT
+        exit 1
+    fi
+    rsync -vph "${PACK_PATH}"*.txt "${TEMP_DIR}"
+    if [ -e "${PACK_PATH}"settings.sh ]
+    then
+        rsync -vph "${PACK_PATH}"settings.sh "${TEMP_DIR}"
+    else
+        echo "----No settings.sh found----" > $NORMAL_OUT
+    fi
+    echo "----DONE BACKING UP----" > $NORMAL_OUT
+}
 
+restoremc()
+{
+    echo "Replacing files in $PACK_PATH with $TEMP_DIR" > $NORMAL_OUT
+    echo "----Done----" > $NORMAL_OUT
+    echo "Returning the backup files from $PACK_PATH" > $NORMAL_OUT
+    rsync -vph "${TEMP_DIR}"server.properties "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"*.txt "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"settings.sh "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"ops.json "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"whitelist.json "${PACK_PATH}"
+    rsync -rvph "${TEMP_DIR}"backups "${PACK_PATH}"
+    rsync -rvph "${TEMP_DIR}"world "${PACK_PATH}"
+    echo "----Done----" > $NORMAL_OUT
+    chown -R minecraft:minecraft "$PACK_PATH"
+    echo "----FINISHED RESTORING----" > $NORMAL_OUT
+}
+
+#
+# END OF FUNCTIONS
+#
 
 # Check Script Parameters
 while [ "$1" != "" ]; do
@@ -81,7 +146,7 @@ while [ "$1" != "" ]; do
 					;;
 		-b | --backup )		BACKUP_ONLY='1'
 					;;
-        -r | --restore )		RESTORE_ONLY='1'
+        -r | --restore )	RESTORE_ONLY='1'
 					;;
 		--temp-dir )		shift
 					TEMP_DIR=$1
@@ -100,80 +165,39 @@ while [ "$1" != "" ]; do
 	shift
 done
 
+#
+# SCRIPT
+#
+
+mkdir -p "$PACK_PATH"
+mkdir -p "$TEMP_DIR"
+
 if [[ "$BACKUP_ONLY" == "1" ]];
 then
 	echo "----BACK UP ONLY----" > $NORMAL_OUT
+    backupmc
+    exit 0
 fi
 if [[ "$RESTORE_ONLY" == "1" ]];
 then
-	echo "----RESTORE ONLY----" > $NORMAL_OUT
+	echo "----RESTORE UP ONLY----" > $NORMAL_OUT
+    restoremc
+    exit 0
 fi
-mkdir -p "$PACK_PATH"
-mkdir -p "$TEMP_DIR"
-echo "Removing old backups in $TEMP_DIR" > $NORMAL_OUT
-find "${TEMP_DIR}"/ -type f -mtime +7 -delete
-echo "----Done----" > $NORMAL_OUT
-echo "Backing up $PACK_PATH" > $NORMAL_OUT
-rsync -vph "${PACK_PATH}"server.properties "${TEMP_DIR}"
-if [ -e "${PACK_PATH}"ops.json ]
+if [ -e "$FLAG_NEWPACK" ]
 then
-	rsync -vph "${PACK_PATH}"ops.json "${TEMP_DIR}"
+    backupmc
+    rm -R "$PACK_PATH"
+    mkdir -p "$PACK_PATH"
+    unzip -oqD "$FLAG_NEWPACK" -d "$PACK_PATH"
+    restoremc
 else
-    echo "----No ops.json found----" > $NORMAL_OUT
-fi
-if [ -e "${PACK_PATH}"whitelist.json ]
-then
-	rsync -vph "${PACK_PATH}"whitelist.json "${TEMP_DIR}"
-else
-    echo "----No whitelist.json found----" > $NORMAL_OUT
-fi
-if [ -e "${PACK_PATH}"backups ]
-then
-	rsync -rvph "${PACK_PATH}"backups "${TEMP_DIR}"
-else
-    echo "----No backups folder found----" > $NORMAL_OUT
-fi
-if [ -e "${PACK_PATH}"world ]
-then
-	rsync -rvph "${PACK_PATH}"world "${TEMP_DIR}"
-else
-    echo "----No world folder found----" > $ERROR_OUT
-    echo "----Something when wrong----" > $ERROR_OUT
-    exit 1
-fi
-rsync -vph "${PACK_PATH}"*.txt "${TEMP_DIR}"
-if [ -e "${PACK_PATH}"settings.sh ]
-then
-    rsync -vph "${PACK_PATH}"settings.sh "${TEMP_DIR}"
-else
-    echo "----No settings.sh found----" > $NORMAL_OUT
-fi
-echo "----Done----" > $NORMAL_OUT
-if [[ "$BACKUP_ONLY" == "1" ]];
-then
-	echo "----FINISHED BACKING UP----" > $NORMAL_OUT
-	echo "----BACKUP FLAG:$BACKUP_ONLY----" > $NORMAL_OUT
-else
-	echo "Replacing files from $PACK_PATH" > $NORMAL_OUT
-	if [ -e "$FLAG_NEWPACK" ]
-	then
-		rm -R "$PACK_PATH"
-		mkdir -p "$PACK_PATH"
-		unzip -oqD "$FLAG_NEWPACK" -d "$PACK_PATH"
-		echo "----Done----" > $NORMAL_OUT
-	  echo "Returning the backup files from $PACK_PATH" > $NORMAL_OUT
-		rsync -vph "${TEMP_DIR}"server.properties "${PACK_PATH}"
-		rsync -vph "${TEMP_DIR}"*.txt "${PACK_PATH}"
-		rsync -vph "${TEMP_DIR}"settings.sh "${PACK_PATH}"
-		rsync -vph "${TEMP_DIR}"ops.json "${PACK_PATH}"
-		rsync -vph "${TEMP_DIR}"whitelist.json "${PACK_PATH}"
-		rsync -rvph "${TEMP_DIR}"backups "${PACK_PATH}"
-		rsync -rvph "${TEMP_DIR}"world "${PACK_PATH}"
-		echo "----Done----" > $NORMAL_OUT
-		chown -R minecraft:minecraft "$PACK_PATH"
-		echo "----FINISHED UPDATING----" > $NORMAL_OUT
-	else
-		echo "This: $FLAG_NEWPACK does not exist!!" > $ERROR_OUT
-		exit 1
-	fi
+    if [ -z "$FLAG_NEWPACK" ]
+    then
+        echo "You forgot the -n flag..." > $ERROR_OUT
+        usage
+    else
+        echo "This: $FLAG_NEWPACK does not exist!!" > $ERROR_OUT
+    fi
+	exit 1
 fi

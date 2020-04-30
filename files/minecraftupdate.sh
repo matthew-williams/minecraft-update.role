@@ -80,7 +80,14 @@ backupmc()
     find "${TEMP_DIR}"/ -type f -mtime +7 -delete
     echo "----Done----" > $NORMAL_OUT
     echo "Backing up $PACK_PATH" > $NORMAL_OUT
-    rsync -vph "${PACK_PATH}"server.properties "${TEMP_DIR}"
+    if [ -e "${PACK_PATH}"server.properties ]
+    then
+        rsync -vph "${PACK_PATH}"server.properties "${TEMP_DIR}"
+    else
+        echo "----No server.properties file found----" > $ERROR_OUT
+        echo "----Something when wrong----" > $ERROR_OUT
+        exit 1
+    fi
     if [ -e "${PACK_PATH}"ops.json ]
     then
     	rsync -vph "${PACK_PATH}"ops.json "${TEMP_DIR}"
@@ -124,9 +131,8 @@ restoremc()
     echo "Returning the backup files from $PACK_PATH" > $NORMAL_OUT
     rsync -vph "${TEMP_DIR}"server.properties "${PACK_PATH}"
     rsync -vph "${TEMP_DIR}"*.txt "${PACK_PATH}"
-    rsync -vph "${TEMP_DIR}"settings.sh "${PACK_PATH}"
-    rsync -vph "${TEMP_DIR}"ops.json "${PACK_PATH}"
-    rsync -vph "${TEMP_DIR}"whitelist.json "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"*.sh "${PACK_PATH}"
+    rsync -vph "${TEMP_DIR}"*.json "${PACK_PATH}"
     rsync -rvph "${TEMP_DIR}"backups "${PACK_PATH}"
     rsync -rvph "${TEMP_DIR}"world "${PACK_PATH}"
     echo "----Done----" > $NORMAL_OUT

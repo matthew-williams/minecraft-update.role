@@ -2,7 +2,7 @@
 galaxy_info:
   author: Matthew Williams
   description: Update Minecraft FTB Servers
-  company: "SecurityMetrics"
+  company: "ForsakenMedia"
   min_ansible_version: 2.7
   platforms:
   - name: Ubuntu
